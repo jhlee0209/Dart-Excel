@@ -1,14 +1,14 @@
 [theme]
 base = "light"
-primaryColor = "#1F3A5F"
-backgroundColor = "#FAF8F4"
-secondaryBackgroundColor = "#F1EDE4"
-textColor = "#18222F"
-linkColor = "#1F3A5F"
-borderColor = "#E3DDD0"
+primaryColor = "#14284B"
+backgroundColor = "#F6F3EC"
+secondaryBackgroundColor = "#EEE9DE"
+textColor = "#0F1B2D"
+linkColor = "#14284B"
+borderColor = "#E5DED0"
 dataframeBorderColor = "#ECE7DC"
 dataframeHeaderBackgroundColor = "#F4F1EA"
-baseRadius = "10px"
+baseRadius = "12px"
 font = "Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif"
 
 [[theme.fontFaces]]

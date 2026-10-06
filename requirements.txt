@@ -3,6 +3,7 @@ pandas
 openpyxl
 requests
 python-dotenv
+pywebview  # 맥 앱 창
 
 # 개발·검증용
 pytest

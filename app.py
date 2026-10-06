@@ -1,18 +1,22 @@
 """DART 미니 데이터북 — Streamlit 화면.
 
+처음에는 이름과 일러스트만 있는 시작 화면이 뜨고, '시작하기'를 누르면 들어간다.
 화면은 셋이다. '기업 찾기'(시가총액 순위에서 회사를 고르고 소개를 읽는다),
 '데이터북'(고른 회사의 5개년 분석을 보고 엑셀로 내려받는다),
 '엑셀 학습'(excel_lab.py: 단축키·함수·매크로를 익히고 실제 재무제표로 과제를 푼다).
 """
 from __future__ import annotations
 
+import base64
 from html import escape
 
 import altair as alt
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 import excel_lab
+import ui
 from databook import dart, market, profile
 from databook import mapping as m
 from databook.analysis import CHECK_KEYS, compute
@@ -22,47 +26,13 @@ from databook.model import FIRST_XBRL_YEAR, FS_LABEL, Databook, build_databook, 
 st.set_page_config(page_title="DART 미니 데이터북", page_icon="📒", layout="wide",
                    initial_sidebar_state="collapsed")
 
-INK, MUTED, LINE, CARD = "#18222F", "#6B7480", "#E3DDD0", "#FFFFFF"
-NAVY, BRONZE = "#1F3A5F", "#9A7B4F"
+INK, MUTED, LINE = ui.INK, ui.MUTED, ui.LINE
 SERIES_REVENUE, SERIES_PROFIT = "#2F5E9E", "#B8802A"  # 차트 계열색(색각 이상 구분 검증을 통과한 조합)
 UP, DOWN = "#C0392B", "#2C5FA8"  # 국내 관례: 상승 빨강, 하락 파랑
 FS_OPTIONS = {"자동 (연결 우선)": None, "연결": "CFS", "별도": "OFS"}
 OTHER_MARKET = "비상장·기타"
 
-st.html(f"""
-<style>
-.block-container {{ max-width: 1320px; padding-top: 2.2rem; padding-bottom: 4rem; }}
-[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] {{ display: none; }}
-.brand {{ font-size: .72rem; font-weight: 700; letter-spacing: .16em; color: {BRONZE}; text-transform: uppercase; }}
-.page-title {{ font-size: 1.9rem; font-weight: 700; color: {INK}; margin: .15rem 0 .2rem; letter-spacing: -.02em; }}
-.page-sub {{ color: {MUTED}; font-size: .92rem; margin-bottom: .4rem; }}
-.corp-head {{ display: flex; align-items: center; gap: .85rem; }}
-.corp-name {{ font-size: 1.25rem; font-weight: 700; color: {INK}; line-height: 1.25; }}
-.corp-head.large .corp-name {{ font-size: 1.9rem; letter-spacing: -.02em; }}
-.corp-meta {{ color: {MUTED}; font-size: .85rem; margin-top: .1rem; }}
-.logo {{ position: relative; flex: none; width: 44px; height: 44px; border-radius: 12px; overflow: hidden;
-        background: {NAVY}; color: #fff; display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 1.05rem; }}
-.corp-head.large .logo {{ width: 56px; height: 56px; border-radius: 14px; font-size: 1.3rem; }}
-.logo img {{ position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #fff; }}
-.facts {{ display: grid; grid-template-columns: 5.2rem 1fr; row-gap: .45rem; font-size: .88rem; margin: .2rem 0; }}
-.facts dt {{ color: {MUTED}; }}
-.facts dd {{ margin: 0; color: {INK}; overflow-wrap: anywhere; }}
-.section-label {{ font-size: .74rem; font-weight: 700; letter-spacing: .1em; color: {BRONZE}; margin: .9rem 0 .45rem; }}
-.overview p {{ font-size: .92rem; line-height: 1.75; color: {INK}; margin: 0 0 .8rem; }}
-.source {{ color: {MUTED}; font-size: .78rem; }}
-.kpis {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: .9rem; margin: .6rem 0 .2rem; }}
-.kpi {{ background: {CARD}; border: 1px solid {LINE}; border-radius: 14px; padding: 1rem 1.15rem; }}
-.kpi .label {{ color: {MUTED}; font-size: .8rem; }}
-.kpi .value {{ color: {INK}; font-size: 1.65rem; font-weight: 700; letter-spacing: -.02em;
-              font-variant-numeric: tabular-nums; margin: .15rem 0; }}
-.kpi .unit {{ font-size: .85rem; font-weight: 500; color: {MUTED}; margin-left: .2rem; }}
-.kpi .sub {{ color: {MUTED}; font-size: .8rem; }}
-.empty {{ border: 1px dashed {LINE}; border-radius: 14px; padding: 3rem 1.5rem; text-align: center;
-         color: {MUTED}; font-size: .92rem; line-height: 1.7; }}
-@media (max-width: 900px) {{ .kpis {{ grid-template-columns: repeat(2, 1fr); }} }}
-</style>
-""")
+ui.inject_base()
 
 
 # ── 데이터 ──────────────────────────────────────────────────────────────
@@ -219,7 +189,7 @@ def open_databook(corp: dict, base_year: int, fs_div: str | None) -> None:
 def excel_banner() -> None:
     """화면 맨 아래의 엑셀 학습 입구."""
     st.html('<div style="height:1.2rem"></div>')
-    with st.container(border=True):
+    with st.container(border=True, key="banner"):
         left, right = st.columns([4.2, 1.2], vertical_alignment="center")
         left.html(
             '<div class="section-label" style="margin:.1rem 0 .2rem">EXCEL LAB</div>'
@@ -232,10 +202,86 @@ def excel_banner() -> None:
             st.rerun()
 
 
+# ── 시작 화면 ───────────────────────────────────────────────────────────
+HERO_SVG = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 340" fill="none">
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#27486F"/><stop offset="1" stop-color="#172C49"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D9B77E"/><stop offset="1" stop-color="#B8915A"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#1F3A5F" flood-opacity=".16"/>
+    </filter>
+  </defs>
+  <ellipse cx="280" cy="178" rx="232" ry="142" fill="#F1EDE4"/>
+  <circle cx="92" cy="86" r="5" fill="#D9B77E"/><circle cx="478" cy="266" r="7" fill="#DDE6DF"/>
+  <circle cx="470" cy="70" r="3.5" fill="#1F3A5F" opacity=".35"/>
+
+  <!-- 뒤: 스프레드시트 -->
+  <g transform="rotate(-7 190 170)" filter="url(#soft)">
+    <rect x="70" y="72" width="250" height="196" rx="16" fill="#FFFFFF"/>
+    <rect x="70" y="72" width="250" height="34" rx="16" fill="#E9F3EC"/>
+    <rect x="70" y="92" width="250" height="14" fill="#E9F3EC"/>
+    <circle cx="90" cy="89" r="4" fill="#107C41"/>
+    <rect x="102" y="85" width="62" height="8" rx="4" fill="#BFD9C8"/>
+    <g stroke="#EEF0EC" stroke-width="1.5">
+      <path d="M70 138H320M70 170H320M70 202H320M70 234H320"/>
+      <path d="M150 106V268M208 106V268M266 106V268"/>
+    </g>
+    <g fill="#D8DDE3">
+      <rect x="84" y="118" width="48" height="7" rx="3.5"/><rect x="84" y="150" width="38" height="7" rx="3.5"/>
+      <rect x="84" y="182" width="52" height="7" rx="3.5"/><rect x="84" y="214" width="42" height="7" rx="3.5"/>
+      <rect x="84" y="246" width="34" height="7" rx="3.5"/>
+      <rect x="164" y="118" width="30" height="7" rx="3.5"/><rect x="222" y="150" width="30" height="7" rx="3.5"/>
+      <rect x="164" y="214" width="30" height="7" rx="3.5"/><rect x="222" y="246" width="30" height="7" rx="3.5"/>
+    </g>
+    <rect x="209" y="171" width="56" height="30" fill="#E9F3EC" stroke="#107C41" stroke-width="2"/>
+    <rect x="222" y="182" width="30" height="7" rx="3.5" fill="#107C41"/>
+  </g>
+
+  <!-- 앞: 실적 카드 -->
+  <g transform="rotate(4 370 190)" filter="url(#soft)">
+    <rect x="236" y="92" width="258" height="188" rx="20" fill="url(#card)"/>
+    <rect x="260" y="116" width="54" height="8" rx="4" fill="#FAF8F4" opacity=".55"/>
+    <rect x="260" y="132" width="88" height="12" rx="6" fill="#FAF8F4"/>
+    <g fill="#FAF8F4" opacity=".92">
+      <rect x="262" y="218" width="26" height="36" rx="5"/><rect x="302" y="202" width="26" height="52" rx="5"/>
+      <rect x="342" y="210" width="26" height="44" rx="5"/><rect x="382" y="184" width="26" height="70" rx="5"/>
+    </g>
+    <rect x="422" y="160" width="26" height="94" rx="5" fill="url(#gold)"/>
+    <path d="M275 200L315 184L355 192L395 166L435 142" stroke="#D9B77E" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="435" cy="142" r="7" fill="#172C49" stroke="#D9B77E" stroke-width="3"/>
+  </g>
+</svg>"""
+
+
+def home() -> None:
+    """이름과 일러스트, 시작 버튼만 있는 첫 화면."""
+    image = base64.b64encode(HERO_SVG.encode("utf-8")).decode("ascii")
+    st.html(
+        '<div class="hero">'
+        f'<img src="data:image/svg+xml;base64,{image}" alt="">'
+        '<div class="brand">Disclosure · Databook · Excel</div>'
+        '<div class="name">DART 미니 데이터북</div>'
+        '<div class="rule"></div>'
+        '<div class="tagline">공시로 기업을 읽고, 엑셀로 손에 익히다</div>'
+        "</div>"
+    )
+    _, middle, _ = st.columns([2.2, 1, 2.2])
+    if middle.button("시작하기", type="primary", width="stretch"):
+        st.session_state["view"] = "explore"
+        st.rerun()
+    st.html('<div class="hero-foot">금융감독원 OpenDART 공시 데이터 기반 · 개인 학습용</div>')
+
+
 # ── 화면 1: 기업 찾기 ───────────────────────────────────────────────────
 def explore() -> None:
+    ui.top_nav("explore", "explore")
     st.html(
-        '<div class="brand">DART Mini Databook</div>'
+        '<div class="brand">Market Cap Ranking</div>'
         '<div class="page-title">기업 찾기</div>'
         '<div class="page-sub">시가총액 순위에서 회사를 고르면 소개를 읽고, 5개년 데이터북을 만들 수 있습니다.</div>'
     )
@@ -276,7 +322,7 @@ def explore() -> None:
             except dart.DartError as exc:
                 st.error(str(exc))
 
-    left, right = st.columns([1.55, 1], gap="large")
+    left, right = st.columns([1.7, 1], gap="large")
     with left:
         if not rows:
             st.html('<div class="empty">검색 결과가 없습니다.</div>')
@@ -300,10 +346,13 @@ def explore() -> None:
                 styled, hide_index=True, width="stretch", height=680, row_height=44,
                 on_select="rerun", selection_mode="single-row", key=f"ranking_{scope}_{q}",
                 column_config={
-                    "순위": st.column_config.Column(width=56),
-                    "로고": st.column_config.ImageColumn(" ", width=48),
-                    "기업명": st.column_config.Column(width="medium"),
-                    "시장": st.column_config.Column(width=80),
+                    "순위": st.column_config.Column(width=50),
+                    "로고": st.column_config.ImageColumn(" ", width=46),
+                    "기업명": st.column_config.Column(width=170),
+                    "시장": st.column_config.Column(width=64),
+                    "시가총액": st.column_config.Column(width=92),
+                    "현재가": st.column_config.Column(width=90),
+                    "등락률": st.column_config.Column(width=80),
                 },
             )
             as_of = market.fetched_at()
@@ -321,7 +370,7 @@ def explore() -> None:
         if selected is None:
             st.html('<div class="empty">왼쪽 목록에서 회사를 선택하세요.<br>무엇을 하는 회사인지와 기본 정보를 볼 수 있습니다.</div>')
         else:
-            with st.container(border=True):
+            with st.container(border=True, key="panel"):
                 corp_head(selected, corp_meta(selected))
                 base_year, fs_div = year_and_fs("explore")
                 if st.button("데이터북 만들기", type="primary", width="stretch"):
@@ -344,6 +393,7 @@ def book(db: Databook) -> None:
     a = compute(db)
     last = len(db.years) - 1
 
+    ui.top_nav("book", "explore")
     back, _, download = st.columns([1.1, 4, 1.6], vertical_alignment="center")
     if back.button("← 기업 목록", width="stretch"):
         st.session_state["view"] = "explore"
@@ -354,7 +404,7 @@ def book(db: Databook) -> None:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
-    st.html('<div class="brand" style="margin-top:.6rem">DART Mini Databook</div>')
+    st.html('<div class="brand" style="margin-top:1.4rem">Five-Year Databook</div>')
     corp_head(
         corp,
         f"{corp_meta(corp)} · {FS_LABEL[db.fs_div]}재무제표 · FY{db.years[0]}~FY{db.years[-1]}".lstrip(" ·"),
@@ -397,7 +447,7 @@ def book(db: Databook) -> None:
     )
 
     with tab_sum:
-        left, right = st.columns([1.25, 1], gap="large")
+        left, right = st.columns([1.7, 1], gap="large")
         with left:
             st.caption("단위: 백만원")
             table(db, [
@@ -478,6 +528,14 @@ def book(db: Databook) -> None:
 
 db: Databook | None = st.session_state.get("db")
 view = st.session_state.get("view")
+if st.session_state.get("shown_view") != view:
+    # 화면이 바뀌면 맨 위에서 시작한다(Streamlit은 이전 스크롤 위치를 그대로 둔다).
+    st.session_state["shown_view"] = view
+    components.html(
+        "<script>for (const el of window.parent.document.querySelectorAll("
+        "'[data-testid=\"stMain\"], [data-testid=\"stAppViewContainer\"], section.main')) el.scrollTo(0, 0);</script>",
+        height=0,
+    )
 if view == "excel":
     try:
         companies = listed_companies()
@@ -487,5 +545,7 @@ if view == "excel":
     excel_lab.render(companies, year_and_fs)
 elif view == "book" and db is not None:
     book(db)
-else:
+elif view == "explore":
     explore()
+else:
+    home()

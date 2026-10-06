@@ -7,27 +7,28 @@ from typing import Callable
 
 import streamlit as st
 
+import ui
 from databook import dart, lessons, practice
 from databook.model import build_databook
 
 GREEN, GREEN_DARK, GREEN_TINT, GREEN_LINE = "#107C41", "#0B5A2E", "#E9F3EC", "#CFE3D6"
-INK, MUTED, CARD = "#18222F", "#6B7480", "#FFFFFF"
+INK, MUTED, CARD = ui.INK, ui.MUTED, ui.CARD
 MODE_LEARN, MODE_PRACTICE = "기능 학습", "실전 예제에 적용하기"
 DEFAULT_GROUP = practice.G_DAILY
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 CSS = f"""
 <style>
-.stApp {{ background: #F6F9F6; }}
-.xl-brand {{ font-size: .72rem; font-weight: 700; letter-spacing: .16em; color: {GREEN}; text-transform: uppercase; }}
-.xl-title {{ font-size: 1.9rem; font-weight: 700; color: {INK}; margin: .15rem 0 .2rem; letter-spacing: -.02em; }}
+.stApp {{ background: radial-gradient(1100px 460px at 50% -8%, #FFFFFF 0%, rgba(255,255,255,0) 62%), #F3F7F2; }}
+.xl-brand {{ font-size: .7rem; font-weight: 700; letter-spacing: .2em; color: {GREEN}; text-transform: uppercase; }}
+.xl-title {{ font-family: {ui.SERIF}; font-size: 2.2rem; font-weight: 700; color: {INK}; margin: .3rem 0 .35rem; letter-spacing: -.02em; }}
 .xl-sub {{ color: {MUTED}; font-size: .92rem; margin-bottom: .4rem; }}
 .xl-label {{ font-size: .76rem; font-weight: 700; letter-spacing: .08em; color: {GREEN}; margin: 1.3rem 0 .5rem; }}
 .xl-note {{ background: {GREEN_TINT}; border: 1px solid {GREEN_LINE}; border-radius: 12px; padding: .8rem 1rem;
            font-size: .88rem; line-height: 1.7; color: {INK}; }}
 .xl-note p {{ margin: 0 0 .3rem; }}
 table.keys {{ width: 100%; border-collapse: separate; border-spacing: 0; background: {CARD};
-             border: 1px solid {GREEN_LINE}; border-radius: 12px; overflow: hidden; font-size: .88rem; }}
+             border: 1px solid {GREEN_LINE}; border-radius: 14px; overflow: hidden; font-size: .88rem; box-shadow: {ui.SHADOW}; }}
 table.keys th {{ text-align: left; background: {GREEN_TINT}; color: {GREEN_DARK}; font-weight: 600;
                 padding: .55rem .9rem; font-size: .8rem; }}
 table.keys td {{ padding: .55rem .9rem; border-top: 1px solid #EAF1EC; color: {INK}; vertical-align: middle; }}
@@ -36,7 +37,7 @@ table.keys td.memo {{ color: {MUTED}; font-size: .82rem; }}
        background: #F4F7F4; border: 1px solid #D5E2D9; border-bottom-width: 2px; border-radius: 7px;
        padding: .12rem .5rem; color: {INK}; white-space: nowrap; }}
 .kbd.none {{ background: transparent; border-color: transparent; color: {MUTED}; font-family: inherit; }}
-.fn {{ background: {CARD}; border: 1px solid {GREEN_LINE}; border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: .8rem; }}
+.fn {{ background: {CARD}; border: 1px solid {GREEN_LINE}; border-radius: 16px; padding: 1.1rem 1.3rem; margin-bottom: .9rem; box-shadow: {ui.SHADOW}; }}
 .fn .name {{ font-family: 'SF Mono', Menlo, Consolas, monospace; font-weight: 700; color: {GREEN_DARK}; font-size: 1.02rem; }}
 .fn .summary {{ color: {INK}; font-size: .93rem; margin: .15rem 0 .7rem; }}
 .fn .row {{ display: grid; grid-template-columns: 3.4rem 1fr; gap: .6rem; margin-top: .4rem; font-size: .86rem; align-items: baseline; }}
@@ -45,7 +46,7 @@ table.keys td.memo {{ color: {MUTED}; font-size: .82rem; }}
            border-radius: 6px; padding: .15rem .4rem; color: {INK}; overflow-wrap: anywhere; }}
 .fn .meaning {{ color: {MUTED}; margin-top: .2rem; }}
 .fn .tip {{ color: {INK}; line-height: 1.65; }}
-.task {{ background: {CARD}; border: 1px solid {GREEN_LINE}; border-radius: 14px; padding: .9rem 1.15rem; margin-bottom: .7rem; }}
+.task {{ background: {CARD}; border: 1px solid {GREEN_LINE}; border-radius: 16px; padding: 1rem 1.25rem; margin-bottom: .8rem; box-shadow: {ui.SHADOW}; }}
 .task .head {{ display: flex; gap: .6rem; align-items: baseline; flex-wrap: wrap; }}
 .task .no {{ font-weight: 700; color: {GREEN}; font-size: .82rem; }}
 .task .title {{ font-weight: 700; color: {INK}; font-size: 1rem; }}
@@ -55,13 +56,22 @@ table.keys td.memo {{ color: {MUTED}; font-size: .82rem; }}
 .step .n {{ width: 1.6rem; height: 1.6rem; border-radius: 50%; background: {GREEN}; color: #fff; font-weight: 700;
            font-size: .85rem; display: flex; align-items: center; justify-content: center; }}
 .step .t {{ font-weight: 700; color: {INK}; font-size: 1.02rem; }}
-/* 이 화면에서는 강조색을 엑셀 초록으로 */
-[data-testid="stBaseButton-primary"] {{ background-color: {GREEN}; border-color: {GREEN}; }}
-[data-testid="stBaseButton-primary"]:hover {{ background-color: {GREEN_DARK}; border-color: {GREEN_DARK}; }}
-[data-testid="stBaseButton-segmented_controlActive"], [data-testid="stBaseButton-pillsActive"] {{
-    background-color: {GREEN_TINT}; border-color: {GREEN}; color: {GREEN_DARK}; }}
-[data-baseweb="tab-highlight"] {{ background-color: {GREEN}; }}
-button[data-baseweb="tab"][aria-selected="true"] p {{ color: {GREEN_DARK}; }}
+/* 이 화면에서는 강조색을 엑셀 초록으로. Streamlit 자체 스타일보다 우선하도록 !important를 쓴다. */
+[data-testid="stBaseButton-primary"] {{ background-color: {GREEN} !important; border-color: {GREEN} !important; }}
+[data-testid="stBaseButton-primary"]:hover {{ background-color: {GREEN_DARK} !important; border-color: {GREEN_DARK} !important; }}
+button[role="radio"][aria-checked="true"], button[aria-pressed="true"] {{
+    background: {GREEN} !important; border-color: {GREEN} !important; }}
+button[role="radio"][aria-checked="true"] p, button[aria-pressed="true"] p {{ color: #FFFFFF !important; }}
+[data-testid="stBaseButton-primary"] {{ background: linear-gradient(180deg, #17924F 0%, {GREEN_DARK} 100%) !important;
+    box-shadow: 0 10px 20px -12px rgba(11,90,46,.7) !important; }}
+div[class*="st-key-nav_"][class*="_on"] button p {{ box-shadow: inset 0 -2px 0 {GREEN} !important; }}
+[data-testid="stTab"][aria-selected="true"] p {{ color: {GREEN_DARK} !important; }}
+[data-testid="stTab"][aria-selected="true"] > div:last-child {{ background-color: {GREEN} !important; }}
+[data-testid="stTextInputRootElement"], [data-testid="stSelectbox"] [role="group"] {{
+    background-color: {CARD} !important; border-color: {GREEN_LINE} !important; }}
+table.keys {{ table-layout: fixed; }}
+table.keys th:first-child {{ width: 28%; }}
+table.keys th:last-child {{ width: 26%; }}
 </style>
 """
 
@@ -220,12 +230,9 @@ def _practice(companies: list[dict], year_and_fs: Callable[[str], tuple[int, str
 
 def render(companies: list[dict], year_and_fs: Callable[[str], tuple[int, str | None]]) -> None:
     st.html(CSS)
-    back, _ = st.columns([1.1, 6])
-    if back.button("← 기업 찾기", width="stretch"):
-        st.session_state["view"] = "explore"
-        st.rerun()
+    ui.top_nav("excel", "excel")
     st.html(
-        '<div class="xl-brand" style="margin-top:.6rem">Excel Lab</div>'
+        '<div class="xl-brand">Excel Lab</div>'
         '<div class="xl-title">엑셀 학습</div>'
         '<div class="xl-sub">단축키 · 함수 · 매크로를 익히고, 실제 회사의 재무제표로 바로 연습합니다.</div>'
     )

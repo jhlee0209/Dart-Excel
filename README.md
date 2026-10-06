@@ -14,6 +14,19 @@
    .venv.nosync/bin/streamlit run app.py
    ```
 
+### 맥 앱으로 실행
+
+```bash
+.venv.nosync/bin/python tools/build_mac_app.py
+```
+
+`dist/DART 데이터북.app`이 만들어집니다. 더블클릭하면 브라우저 없이 전용 창으로 열리고, 창을 닫으면 서버도 함께 끝납니다.
+응용 프로그램 폴더나 Dock으로 옮겨도 됩니다.
+
+이 앱은 파이썬을 통째로 담은 것이 아니라 **이 프로젝트 폴더와 가상환경을 실행하는 실행기**입니다.
+프로젝트 폴더를 옮기거나 이름을 바꾸면 위 명령으로 앱을 다시 만들어야 하고, 다른 맥에 앱 파일만 복사해서는 실행되지 않습니다.
+문제가 생기면 `~/Library/Logs/DART Databook/server.log`를 확인하세요.
+
 가상환경을 새로 만들 때:
 
 ```bash

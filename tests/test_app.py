@@ -25,6 +25,22 @@ def fake_sources(monkeypatch):
     monkeypatch.setattr(profile, "business_overview", lambda code: OVERVIEW)
 
 
+def start(at: AppTest) -> AppTest:
+    """시작 화면에서 '시작하기'를 눌러 기업 찾기로 들어간다."""
+    at.run()
+    assert not at.exception
+    return next(b for b in at.button if b.label == "시작하기").click().run()
+
+
+def test_home_shows_only_name_and_start_button():
+    at = AppTest.from_file(APP, default_timeout=30).run()
+    assert not at.exception
+    assert [b.label for b in at.button] == ["시작하기"]
+    text = html_text(at)
+    assert "DART 미니 데이터북" in text and "data:image/svg+xml;base64," in text
+    assert not at.get("dataframe") and not at.text_input
+
+
 def html_text(at: AppTest) -> str:
     return " ".join(str(h.proto.body) for h in at.get("html"))
 
@@ -32,7 +48,7 @@ def html_text(at: AppTest) -> str:
 def test_explore_then_open_databook():
     at = AppTest.from_file(APP, default_timeout=30)
     at.query_params["code"] = "000000"  # 표에서 행을 고른 것과 같은 효과
-    at.run()
+    start(at)
     assert not at.exception
     text = html_text(at)
     assert "테스트전자" in text and "홍길동" in text and "첫 문단입니다." in text
@@ -56,7 +72,7 @@ def test_ranking_failure_is_reported(monkeypatch):
         raise market.MarketError("시가총액 순위를 받지 못했습니다 (Timeout).")
 
     monkeypatch.setattr(market, "load_ranking", fail)
-    at = AppTest.from_file(APP, default_timeout=30).run()
+    at = start(AppTest.from_file(APP, default_timeout=30))
     assert not at.exception
     assert any("시가총액 순위를 받지 못했습니다" in e.value for e in at.error)
 
@@ -68,7 +84,7 @@ def test_missing_key_message(monkeypatch, tmp_path):
     monkeypatch.setattr(dart, "CACHE_DIR", tmp_path / "cache")
     monkeypatch.delenv("DART_API_KEY", raising=False)
 
-    at = AppTest.from_file(APP, default_timeout=30).run()
+    at = start(AppTest.from_file(APP, default_timeout=30))
     assert not at.exception
     assert any("인증키가 없습니다" in e.value for e in at.error)
 
@@ -76,7 +92,7 @@ def test_missing_key_message(monkeypatch, tmp_path):
 def test_refresh_button_refetches(monkeypatch):
     calls = []
     monkeypatch.setattr(market, "load_ranking", lambda force=False: calls.append(force) or [STOCK])
-    at = AppTest.from_file(APP, default_timeout=30).run()
+    at = start(AppTest.from_file(APP, default_timeout=30))
     next(b for b in at.button if b.label == "시세 새로고침").click().run()
     assert not at.exception
     assert True in calls  # 캐시를 무시하고 다시 받았다
@@ -87,7 +103,7 @@ def click(at: AppTest, label: str) -> AppTest:
 
 
 def test_excel_lab_lessons_and_practice():
-    at = AppTest.from_file(APP, default_timeout=60).run()
+    at = start(AppTest.from_file(APP, default_timeout=60))
     click(at, "엑셀 학습하기")
     assert not at.exception
     assert at.session_state["view"] == "excel"
@@ -105,5 +121,5 @@ def test_excel_lab_lessons_and_practice():
     assert result.macro_code is None
     assert "과제 4개" in html_text(at)
 
-    click(at, "← 기업 찾기")
+    click(at, "기업 찾기")
     assert "기업 찾기" in html_text(at)
