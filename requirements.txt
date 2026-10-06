@@ -1,0 +1,9 @@
+streamlit
+pandas
+openpyxl
+requests
+python-dotenv
+
+# 개발·검증용
+pytest
+formulas
